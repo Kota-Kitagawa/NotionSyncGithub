@@ -67,28 +67,37 @@ def sync_notion_to_github():
     notion_tasks = response.json().get("results", [])
 
     for task in notion_tasks:
-        title = task["properties"]["タイトル"]["title"][0]["text"]["content"]
-        github_issue_id = task["properties"].get("GithubIssueID", {}).get("rich_text", [{}])[0].get("text", {}).get("content")
-        repository_name = task["properties"]["リポジトリ"]["relation"][0]["id"] if "リポジトリ" in task["properties"] else None
+        title = task["properties"]["タイトル名"]["title"][0]["text"]["content"]
 
-        if not github_issue_id and repository_name:
-            github_url = f"https://api.github.com/repos/{GITHUB_OWNER}/{repository_name}/issues"
-            issue_data = {"title": title, "body": "Created from Notion"}
-            github_headers = {
-                "Authorization": f"Bearer {GITHUB_API_TOKEN}",
-                "Accept": "application/vnd.github.v3+json"
-            }
+        github_issue_id = None
+        if "Github Issue ID" in task["properties"] and task["properties"]["Github Issue ID"].get("rich_text"):
+            github_issue_id = task["properties"]["Github Issue ID"]["rich_text"][0]["text"]["content"]
 
-            github_response = requests.post(github_url, json=issue_data, headers=github_headers)
+        repository_name = None
+        if "リポジトリ" in task["properties"] and task["properties"]["リポジトリ"].get("relation"):
+            repository_name = task["properties"]["リポジトリ"]["relation"][0]["id"]
 
-            if github_response.status_code == 201:
-                issue_number = github_response.json()["number"]
-                notion_page_id = task["id"]
-                update_data = {
-                    "properties": {
-                        "GithubIssueID": {"rich_text": [{"text": {"content": str(issue_number)}}]}
-                    }
+
+        if github_issue_id or not repository_name:
+            continue
+
+        github_url = f"https://api.github.com/repos/{GITHUB_OWNER}/{repository_name}/issues"
+        issue_data = {"title": title, "body": "Created from Notion"}
+        github_headers = {
+            "Authorization": f"Bearer {GITHUB_API_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+        github_response = requests.post(github_url, json=issue_data, headers=github_headers)
+
+        if github_response.status_code == 201:
+            issue_number = github_response.json()["number"]
+            notion_page_id = task["id"]
+            update_data = {
+                "properties": {
+                    "Github Issue ID": {"rich_text": [{"text": {"content": str(issue_number)}}]}
                 }
-                requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
+            }
+            requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Notion tasks synced to GitHub"}
