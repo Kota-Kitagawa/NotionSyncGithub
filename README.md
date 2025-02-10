@@ -1,0 +1,2 @@
+# 概要
+NotionとGithubを同期させた進捗管理API
