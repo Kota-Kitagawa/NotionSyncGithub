@@ -22,6 +22,9 @@ async def github_repository_webhook(request: Request):
     payload = await request.json()
     event_type = request.headers.get("X-GitHub-Event")
 
+    print(f"🔹 Event Type: {event_type}")
+    print(f"🔹 Payload: {payload}")
+
     if event_type == "repository" and payload.get("action") == "created":
         repo_name = payload["repository"]["name"]
         repo_url = payload["repository"]["html_url"]
@@ -40,6 +43,7 @@ async def github_repository_webhook(request: Request):
                 "ステータス": {"select": {"name": "Active"}}
             }
         }
+        print(f"📡 Sending data to Notion: {notion_data}")
 
         notion_response = requests.post("https://api.notion.com/v1/pages", headers=notion_headers, json=notion_data)
 
