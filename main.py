@@ -5,13 +5,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from datetime import datetime
 
-# 環境変数をロード
 load_dotenv()
 
 app = FastAPI()
 scheduler = BackgroundScheduler()
 
-# 環境変数
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_REPO_DATABASE_ID = os.getenv("NOTION_REPO_DATABASE_ID")
 NOTION_TASK_DATABASE_ID = os.getenv("NOTION_TASK_DATABASE_ID")
@@ -22,7 +20,6 @@ GITHUB_OWNER = os.getenv("GITHUB_OWNER")
 def read_root():
     return {"message": "Notion-GitHub Sync API is running"}
 
-### **📌 1. GitHub でリポジトリが作成されたら Notion に追加**
 @app.post("/api/github/repository_webhook")
 async def github_repository_webhook(request: Request):
     payload = await request.json()
@@ -56,7 +53,6 @@ async def github_repository_webhook(request: Request):
 
     return {"message": "Webhook received"}
 
-### **📌 2. Notion のタスクを GitHub Issue に同期**
 def sync_notion_to_github():
     headers = {
         "Authorization": f"Bearer {NOTION_API_KEY}",
@@ -97,7 +93,6 @@ def sync_notion_to_github():
                 }
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
-### **📌 3. GitHub Issue の変更を Notion に同期（履歴付き）**
 @app.post("/api/github/webhook")
 async def github_webhook(request: Request):
     payload = await request.json()
@@ -132,8 +127,7 @@ async def github_webhook(request: Request):
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Webhook received"}
-
-### **📌 4. Notion のステータス変更を GitHub に反映（履歴付き）**
+    
 def update_github_issue_from_notion():
     headers = {
         "Authorization": f"Bearer {NOTION_API_KEY}",
