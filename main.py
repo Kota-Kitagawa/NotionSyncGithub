@@ -1,14 +1,13 @@
 from fastapi import FastAPI, Request
 import os
 import requests
-from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from datetime import datetime
 
-load_dotenv()
 
+load_dotenv()
 app = FastAPI()
-scheduler = BackgroundScheduler()
+
 
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_REPO_DATABASE_ID = os.getenv("NOTION_REPO_DATABASE_ID")
@@ -53,46 +52,6 @@ async def github_repository_webhook(request: Request):
 
     return {"message": "Webhook received"}
 
-def sync_notion_to_github():
-    headers = {
-        "Authorization": f"Bearer {NOTION_API_KEY}",
-        "Notion-Version": "2022-06-28"
-    }
-
-    notion_url = f"https://api.notion.com/v1/databases/{NOTION_TASK_DATABASE_ID}/query"
-    response = requests.post(notion_url, headers=headers)
-
-    if response.status_code != 200:
-        print(f"⚠️ Notion API Error: {response.status_code} - {response.text}")
-        return
-
-    notion_tasks = response.json().get("results", [])
-
-    for task in notion_tasks:
-        title = task["properties"]["タイトル"]["title"][0]["text"]["content"]
-        github_issue_id = task["properties"].get("GithubIssueID", {}).get("rich_text", [{}])[0].get("text", {}).get("content")
-        repository_name = task["properties"]["リポジトリ"]["relation"][0]["id"] if "リポジトリ" in task["properties"] else None
-
-        if not github_issue_id and repository_name:
-            github_url = f"https://api.github.com/repos/{GITHUB_OWNER}/{repository_name}/issues"
-            issue_data = {"title": title, "body": "Created from Notion"}
-            github_headers = {
-                "Authorization": f"Bearer {GITHUB_API_TOKEN}",
-                "Accept": "application/vnd.github.v3+json"
-            }
-
-            github_response = requests.post(github_url, json=issue_data, headers=github_headers)
-
-            if github_response.status_code == 201:
-                issue_number = github_response.json()["number"]
-                notion_page_id = task["id"]
-                update_data = {
-                    "properties": {
-                        "GithubIssueID": {"rich_text": [{"text": {"content": str(issue_number)}}]}
-                    }
-                }
-                requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
-
 @app.post("/api/github/webhook")
 async def github_webhook(request: Request):
     payload = await request.json()
@@ -127,30 +86,7 @@ async def github_webhook(request: Request):
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Webhook received"}
-    
-def update_github_issue_from_notion():
-    headers = {
-        "Authorization": f"Bearer {NOTION_API_KEY}",
-        "Notion-Version": "2022-06-28"
-    }
 
-    notion_url = f"https://api.notion.com/v1/databases/{NOTION_TASK_DATABASE_ID}/query"
-    response = requests.post(notion_url, headers=headers)
 
-    if response.status_code != 200:
-        print(f"⚠️ Notion API Error: {response.status_code} - {response.text}")
-        return
-
-    notion_tasks = response.json().get("results", [])
-    for task in notion_tasks:
-        github_issue_id = task["properties"].get("GithubIssueID", {}).get("rich_text", [{}])[0].get("text", {}).get("content")
-        status = task["properties"]["ステータス"]["select"]["name"]
-        updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if github_issue_id:
-            github_url = f"https://api.github.com/repos/{GITHUB_OWNER}/{repository_name}/issues/{github_issue_id}"
-            issue_data = {"state": "closed" if status == "Done" else "open"}
-            requests.patch(github_url, json=issue_data, headers={"Authorization": f"Bearer {GITHUB_API_TOKEN}"})
-
-scheduler.add_job(sync_notion_to_github, "interval", minutes=10)
-scheduler.start()
+def handler(req):
+    return app
