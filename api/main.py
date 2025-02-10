@@ -19,40 +19,55 @@ def read_root():
 
 @app.post("/api/github/repository_webhook")
 async def github_repository_webhook(request: Request):
+    print("✅ GitHub Webhook received")
+    
     payload = await request.json()
     event_type = request.headers.get("X-GitHub-Event")
 
-    print(f"🔹 Event Type: {event_type}")
-    print(f"🔹 Payload: {payload}")
+    print(f"🔹 受信したイベントタイプ: {event_type}")
+    print(f"🔹 ペイロード: {payload}")
 
-    if event_type == "repository" and payload.get("action") == "created":
-        repo_name = payload["repository"]["name"]
-        repo_url = payload["repository"]["html_url"]
+    if event_type != "repository":
+        print("⚠️ repositoryイベント以外なのでスキップ")
+        return {"message": "Webhook received but ignored"}
 
-        notion_headers = {
-            "Authorization": f"Bearer {NOTION_API_KEY}",
-            "Notion-Version": "2022-06-28",
-            "Content-Type": "application/json"
+    if payload.get("action") != "created":
+        print("⚠️ action が created ではないのでスキップ")
+        return {"message": "Webhook received but ignored"}
+
+    repo_name = payload["repository"]["name"]
+    repo_url = payload["repository"]["html_url"]
+
+    print(f"📡 Notion に送信するリポジトリ情報: {repo_name}, {repo_url}")
+
+    notion_headers = {
+        "Authorization": f"Bearer {NOTION_API_KEY}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+    }
+
+    notion_data = {
+        "parent": {"database_id": NOTION_REPO_DATABASE_ID},
+        "properties": {
+            "リポジトリ名": {"title": [{"text": {"content": repo_name}}]},
+            "URL": {"url": repo_url},
+            "ステータス": {"select": {"name": "Active"}}
         }
+    }
 
-        notion_data = {
-            "parent": {"database_id": NOTION_REPO_DATABASE_ID},
-            "properties": {
-                "リポジトリ名": {"title": [{"text": {"content": repo_name}}]},
-                "URL": {"url": repo_url},
-                "ステータス": {"select": {"name": "Active"}}
-            }
-        }
-        print(f"📡 Sending data to Notion: {notion_data}")
+    print(f"📡 Notion API に送信するデータ: {notion_data}")
 
-        notion_response = requests.post("https://api.notion.com/v1/pages", headers=notion_headers, json=notion_data)
+    notion_response = requests.post("https://api.notion.com/v1/pages", headers=notion_headers, json=notion_data)
 
-        if notion_response.status_code == 200:
-            print(f"✅ Notion にリポジトリ {repo_name} を追加しました")
-        else:
-            print(f"⚠️ Notion API Error: {notion_response.status_code} - {notion_response.text}")
+    print(f"🔹 Notion API のレスポンス: {notion_response.status_code}, {notion_response.text}")
+
+    if notion_response.status_code == 200:
+        print(f"✅ Notion にリポジトリ {repo_name} を追加しました")
+    else:
+        print(f"⚠️ Notion API Error: {notion_response.status_code} - {notion_response.text}")
 
     return {"message": "Webhook received"}
+
 
 @app.post("/api/sync_notion_to_github")
 def sync_notion_to_github():
