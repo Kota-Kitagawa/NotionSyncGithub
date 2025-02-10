@@ -2,14 +2,10 @@ from fastapi import FastAPI, Request
 import os
 import requests
 from dotenv import load_dotenv
-from datetime import datetime
-import uvicorn
-
 
 load_dotenv()
 
 app = FastAPI()
-
 
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_REPO_DATABASE_ID = os.getenv("NOTION_REPO_DATABASE_ID")
@@ -54,7 +50,7 @@ async def github_repository_webhook(request: Request):
 
     return {"message": "Webhook received"}
 
-@app.get("/api/sync_notion_to_github")
+@app.post("/api/sync_notion_to_github")
 def sync_notion_to_github():
     headers = {
         "Authorization": f"Bearer {NOTION_API_KEY}",
@@ -96,6 +92,3 @@ def sync_notion_to_github():
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Notion tasks synced to GitHub"}
-
-
-handler = app
