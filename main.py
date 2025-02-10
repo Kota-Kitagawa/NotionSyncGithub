@@ -3,6 +3,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from datetime import datetime
+import uvicorn
 
 
 load_dotenv()
@@ -97,5 +98,4 @@ def sync_notion_to_github():
     return {"message": "Notion tasks synced to GitHub"}
 
 
-def handler(req):
-    return app
+handler = app
