@@ -13,14 +13,16 @@ NOTION_TASK_DATABASE_ID = os.getenv("NOTION_TASK_DATABASE_ID")
 GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN")
 GITHUB_OWNER = os.getenv("GITHUB_OWNER")
 
+
 @app.get("/")
 def read_root():
     return {"message": "Notion-GitHub Sync API is running"}
 
+
 @app.post("/api/github/repository_webhook")
 async def github_repository_webhook(request: Request):
     print("✅ GitHub Webhook received")
-    
+
     payload = await request.json()
     event_type = request.headers.get("X-GitHub-Event")
 
@@ -51,7 +53,7 @@ async def github_repository_webhook(request: Request):
         "properties": {
             "リポジトリ名": {"title": [{"text": {"content": repo_name}}]},
             "URL": {"url": repo_url},
-            "ステータス": {"select": {"name": "Active"}}
+            "ステータス": {"rich_text": [{"text": {"content": "Active"}}]} 
         }
     }
 
@@ -94,8 +96,18 @@ def sync_notion_to_github():
 
         repository_name = None
         if "リポジトリ" in task["properties"] and task["properties"]["リポジトリ"].get("relation"):
-            repository_name = task["properties"]["リポジトリ"]["relation"][0]["id"]
+            relation_list = task["properties"]["リポジトリ"]["relation"]
+            if relation_list:
+                repository_page_id = relation_list[0]["id"]
 
+                repo_response = requests.get(
+                    f"https://api.notion.com/v1/pages/{repository_page_id}",
+                    headers=headers
+                )
+
+                if repo_response.status_code == 200:
+                    repo_data = repo_response.json()
+                    repository_name = repo_data["properties"]["リポジトリ名"]["title"][0]["text"]["content"]
 
         if github_issue_id or not repository_name:
             continue
