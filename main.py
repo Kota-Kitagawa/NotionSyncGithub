@@ -13,7 +13,7 @@ NOTION_TASK_DATABASE_ID = os.getenv("NOTION_TASK_DATABASE_ID")
 GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN")
 GITHUB_OWNER = os.getenv("GITHUB_OWNER")
 
-@app.get("/")
+@app.get("/api")
 def read_root():
     return {"message": "Notion-GitHub Sync API is running"}
 
@@ -92,3 +92,6 @@ def sync_notion_to_github():
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Notion tasks synced to GitHub"}
+
+def handler(event, context):
+    return app
