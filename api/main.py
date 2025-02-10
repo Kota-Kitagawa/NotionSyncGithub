@@ -92,6 +92,3 @@ def sync_notion_to_github():
                 requests.patch(f"https://api.notion.com/v1/pages/{notion_page_id}", headers=headers, json=update_data)
 
     return {"message": "Notion tasks synced to GitHub"}
-
-def handler(event, context):
-    return app
